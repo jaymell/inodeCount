@@ -3,14 +3,14 @@
 #include <sys/types.h>
 #include <dirent.h>
 #include <stdlib.h>
-
-/* get length of array */
-#define NELEMS(x)  (sizeof(x) / sizeof((x)[0]))
+#include <sys/stat.h>
+#include <errno.h>
 
 long inodeCount(const char *name, int level, int maxDepth) {
 
 	DIR *dir;
 	struct dirent *entry;
+	struct stat s; 
 	long local = 0, total = 0;
 	
 	if(!(dir = opendir(name)))
@@ -24,22 +24,26 @@ long inodeCount(const char *name, int level, int maxDepth) {
 			continue;
 
 		local++;
+		char path[1024];
+		long len = snprintf(path, sizeof(path)-1, "%s/%s", name, entry->d_name);
+		path[len] = '\0';
 
-		if(entry->d_type == DT_DIR) {
-			char path[1024];
-			long len = snprintf(path, sizeof(path)-1, "%s/%s", name, entry->d_name);
-			path[len] = 0;
+		/* printf("Entry: %s\n",entry->d_name); */
+		if (lstat(path, &s) == -1)
+			printf("Error: %s\n", path);
+
+		if(S_ISDIR(s.st_mode)) {
+			if(maxDepth) {
+				if(level < maxDepth)
+					printf("%s: %d\n", name, total);
+			}
+			/* recurse */
 			total += inodeCount(path, level + 1, maxDepth);
         }
-
 	} while (entry = readdir(dir));
 
 	total += local;
 	closedir(dir);
-	if(maxDepth) {
-		if(level < maxDepth)
-			printf("%s: %d\n", name, total);
-		}
 	return total;
 }
 
@@ -57,7 +61,9 @@ int main(int argc, const char *const *argv) {
 	if(argc == 3) 
 		maxDepth = strtol(argv[2], NULL, 10);
 
+	/* start recursion */
 	total += inodeCount(path, 0, maxDepth);
+
 	printf("Grand total: %d\n", total);
 	return 0;
 }
