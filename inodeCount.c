@@ -33,16 +33,16 @@ long inodeCount(const char *name, int level, int maxDepth) {
 			printf("Error: %s\n", path);
 
 		if(S_ISDIR(s.st_mode)) {
-			if(maxDepth) {
-				if(level < maxDepth)
-					printf("%s: %d\n", name, total);
-			}
 			/* recurse */
 			total += inodeCount(path, level + 1, maxDepth);
         }
 	} while (entry = readdir(dir));
 
 	total += local;
+	if(maxDepth) {
+		if(level <= maxDepth)
+			printf("%s: %d\n", name, total);
+	}
 	closedir(dir);
 	return total;
 }
